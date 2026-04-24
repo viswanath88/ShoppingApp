@@ -44,8 +44,9 @@ test.describe("Cart", () => {
     const plusBtn = cartItem.getByRole("button", { name: "+" });
     await plusBtn.click();
 
-    // Verify the quantity updated to 2
-    await expect(cartItem.getByText("2")).toBeVisible({ timeout: 5000 });
+    // Verify the quantity updated to 2 (use the quantity display span)
+    const qtyDisplay = cartItem.locator("span.text-center");
+    await expect(qtyDisplay).toHaveText("2", { timeout: 5000 });
 
     // The total should update
     await expect(page.getByText("Grand Total")).toBeVisible();
@@ -139,16 +140,18 @@ test.describe("Cart", () => {
     await page.getByTestId("cart-link").click();
 
     const cartItem = page.getByTestId("cart-item").first();
+    // The quantity display is a span between the - and + buttons
+    const qtyDisplay = cartItem.locator("span.text-center");
 
     // Increase quantity to 2 first
     const plusBtn = cartItem.getByRole("button", { name: "+" });
     await plusBtn.click();
-    await expect(cartItem.getByText("2")).toBeVisible({ timeout: 5000 });
+    await expect(qtyDisplay).toHaveText("2", { timeout: 5000 });
 
     // Now click "-" to decrease quantity back to 1
     const minusBtn = cartItem.getByRole("button", { name: "-" });
     await minusBtn.click();
-    await expect(cartItem.getByText("1")).toBeVisible({ timeout: 5000 });
+    await expect(qtyDisplay).toHaveText("1", { timeout: 5000 });
   });
 
   test("should display correct tax calculation (8%)", async ({ page }) => {
@@ -158,25 +161,21 @@ test.describe("Cart", () => {
     await page.getByTestId("cart-link").click();
     await expect(page.getByText("Order Summary")).toBeVisible();
 
-    // Extract the subtotal, tax, and grand total values from the summary
-    const subtotalText = await page
-      .locator("text=Subtotal")
-      .locator("..")
-      .getByRole("generic")
-      .filter({ hasText: /^\$\d+\.\d{2}$/ })
-      .textContent();
-    const taxText = await page
-      .locator("text=Tax (8%)")
-      .locator("..")
-      .getByRole("generic")
-      .filter({ hasText: /^\$\d+\.\d{2}$/ })
-      .textContent();
-    const grandTotalText = await page
-      .locator("text=Grand Total")
-      .locator("..")
-      .locator("span")
-      .filter({ hasText: /^\$\d+\.\d{2}$/ })
-      .textContent();
+    // The cart summary has rows like: <div class="flex justify-between"><span>Subtotal (...)</span><span>$XX.XX</span></div>
+    // Use the row container to extract the dollar amount next to each label
+    const summarySection = page.locator(".space-y-3.text-sm");
+
+    const subtotalRow = summarySection.locator("div.flex").filter({ hasText: "Subtotal" });
+    const taxRow = summarySection.locator("div.flex").filter({ hasText: "Tax (8%)" });
+    const grandTotalRow = summarySection.locator("div.flex").filter({ hasText: "Grand Total" });
+
+    // Wait for values to be rendered
+    await expect(subtotalRow).toBeVisible();
+
+    // Extract dollar amounts from each row
+    const subtotalText = await subtotalRow.locator("span").last().textContent();
+    const taxText = await taxRow.locator("span").last().textContent();
+    const grandTotalText = await grandTotalRow.locator("span").last().textContent();
 
     // Parse dollar amounts
     const subtotal = parseFloat(subtotalText!.replace("$", ""));

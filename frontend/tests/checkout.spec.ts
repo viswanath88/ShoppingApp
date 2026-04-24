@@ -115,7 +115,7 @@ test.describe("Checkout Flow", () => {
   }) => {
     // Intercept and delay the orders API to capture loading state
     await page.route("**/api/orders", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       await route.continue();
     });
 
@@ -130,12 +130,16 @@ test.describe("Checkout Flow", () => {
       .getByRole("button", { name: "Continue to Payment" })
       .click();
 
-    // Click Pay Now and check for loading state
-    const payBtn = page.getByRole("button", { name: /Pay Now/i });
-    await payBtn.click();
+    // Click Pay Now
+    await page.getByRole("button", { name: /Pay Now/i }).click();
 
-    // Should see disabled/loading state on the button
-    await expect(payBtn).toBeDisabled();
+    // Should see the processing/loading state (button text changes and becomes disabled)
+    await expect(
+      page.getByRole("button", { name: /Processing Payment/i })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Processing Payment/i })
+    ).toBeDisabled();
 
     // Then should navigate to confirmation
     await expect(page).toHaveURL(/\/order-confirmation\/\d+/, {
