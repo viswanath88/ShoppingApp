@@ -12,7 +12,7 @@ test.describe("Cart", () => {
 
     await expect(page.getByText("Your cart is empty")).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Start Shopping" })
+      page.getByRole("link", { name: "StartShopping" })
     ).toBeVisible({ timeout: 10000 });
   });
 
