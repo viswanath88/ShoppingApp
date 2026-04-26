@@ -201,8 +201,10 @@ test.describe("Checkout Flow", () => {
     // Navigate directly to checkout with an empty cart
     await page.goto("/checkout");
 
-    // Should show empty cart message
-    await expect(page.getByText("Your cart is empty")).toBeVisible();
+    // Should show empty cart message (wait for cart loading to finish)
+    await expect(page.getByText("Your cart is empty")).toBeVisible({
+      timeout: 10000,
+    });
     await expect(
       page.getByRole("link", { name: "Browse Products" })
     ).toBeVisible();
