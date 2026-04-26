@@ -39,14 +39,20 @@ test.describe("Cart", () => {
     await page.getByTestId("cart-link").click();
 
     const cartItem = page.getByTestId("cart-item").first();
+    const qtyDisplay = cartItem.locator("span.text-center");
+
+    // Read the initial quantity
+    await expect(qtyDisplay).toBeVisible();
+    const initialQty = parseInt((await qtyDisplay.textContent()) || "0");
 
     // Click + button to increase quantity
     const plusBtn = cartItem.getByRole("button", { name: "+" });
     await plusBtn.click();
 
-    // Verify the quantity updated to 2 (use the quantity display span)
-    const qtyDisplay = cartItem.locator("span.text-center");
-    await expect(qtyDisplay).toHaveText("2", { timeout: 5000 });
+    // Verify the quantity incremented by 1
+    await expect(qtyDisplay).toHaveText(String(initialQty + 1), {
+      timeout: 5000,
+    });
 
     // The total should update
     await expect(page.getByText("Grand Total")).toBeVisible();
@@ -140,18 +146,25 @@ test.describe("Cart", () => {
     await page.getByTestId("cart-link").click();
 
     const cartItem = page.getByTestId("cart-item").first();
-    // The quantity display is a span between the - and + buttons
     const qtyDisplay = cartItem.locator("span.text-center");
 
-    // Increase quantity to 2 first
+    // Read the initial quantity
+    await expect(qtyDisplay).toBeVisible();
+    const initialQty = parseInt((await qtyDisplay.textContent()) || "0");
+
+    // Increase quantity first
     const plusBtn = cartItem.getByRole("button", { name: "+" });
     await plusBtn.click();
-    await expect(qtyDisplay).toHaveText("2", { timeout: 5000 });
+    await expect(qtyDisplay).toHaveText(String(initialQty + 1), {
+      timeout: 5000,
+    });
 
-    // Now click "-" to decrease quantity back to 1
+    // Now click "-" to decrease quantity back
     const minusBtn = cartItem.getByRole("button", { name: "-" });
     await minusBtn.click();
-    await expect(qtyDisplay).toHaveText("1", { timeout: 5000 });
+    await expect(qtyDisplay).toHaveText(String(initialQty), {
+      timeout: 5000,
+    });
   });
 
   test("should display correct tax calculation (8%)", async ({ page }) => {
@@ -169,7 +182,7 @@ test.describe("Cart", () => {
     const taxRow = summarySection.locator("div.flex").filter({ hasText: "Tax (8%)" });
     const grandTotalRow = summarySection.locator("div.flex").filter({ hasText: "Grand Total" });
 
-    // Wait for values to be rendered
+    // Wait for values to be rendereds//
     await expect(subtotalRow).toBeVisible();
 
     // Extract dollar amounts from each row
