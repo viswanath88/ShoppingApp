@@ -203,13 +203,14 @@ test.describe("Checkout Flow", () => {
     // Clear cart again so it is empty.
     await clearCartViaUI(page);
 
-    // Navigate directly to checkout with an empty cart
-    await page.goto("/checkout");
+    // Navigate directly to checkout, waiting for the cart fetch to settle
+    // so the page renders its final state (not a brief stale snapshot).
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes("/api/cart") && res.ok()),
+      page.goto("/checkout"),
+    ]);
 
-    // Should show empty cart message (wait for cart loading to finish)
-    await expect(page.getByText("Your cart is empty")).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(page.getByText("Your cart is empty")).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Browse Products" })
     ).toBeVisible();

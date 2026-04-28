@@ -1,5 +1,24 @@
 import { test, expect, type Locator } from "@playwright/test";
-import { loginAsAdmin, loginAsCustomer } from "./helpers";
+import {
+  loginAsAdmin,
+  loginAsCustomer,
+  placeOrder,
+} from "./helpers";
+
+// Ensure at least one order exists so dashboard/status tests have data.
+// CI seeds the DB with zero orders, and admin.spec.ts runs first
+// alphabetically with workers=1, so without this the dashboard table
+// doesn't render.
+test.beforeAll(async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    await loginAsCustomer(page);
+    await placeOrder(page);
+  } finally {
+    await context.close();
+  }
+});
 
 test.describe("Admin - Access Control", () => {
   test("should redirect unauthenticated user from /admin to login", async ({ page }) => {
