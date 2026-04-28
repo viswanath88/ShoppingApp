@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { loginAsCustomer, clearCartViaUI, addProductToCart } from "./helpers";
+import {
+  loginAsCustomer,
+  clearCartViaUI,
+  addProductToCart,
+  placeOrder,
+} from "./helpers";
 
 test.describe("Checkout Flow", () => {
   test.beforeEach(async ({ page }) => {
@@ -198,13 +203,14 @@ test.describe("Checkout Flow", () => {
     // Clear cart again so it is empty.
     await clearCartViaUI(page);
 
-    // Navigate directly to checkout with an empty cart
-    await page.goto("/checkout");
+    // Navigate directly to checkout, waiting for the cart fetch to settle
+    // so the page renders its final state (not a brief stale snapshot).
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes("/api/cart") && res.ok()),
+      page.goto("/checkout"),
+    ]);
 
-    // Should show empty cart message (wait for cart loading to finish)
-    await expect(page.getByText("Your cart is empty")).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(page.getByText("Your cart is empty")).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Browse Products" })
     ).toBeVisible();
@@ -212,31 +218,17 @@ test.describe("Checkout Flow", () => {
 });
 
 test.describe("Order History", () => {
+  // Each test in this block needs at least one existing order. Create one
+  // explicitly so tests can run in any order, or alone via -g, without
+  // depending on side effects from other tests.
   test.beforeEach(async ({ page }) => {
     await loginAsCustomer(page);
+    await placeOrder(page);
+    await page.goto("/orders");
+    await expect(page.getByTestId("order-card").first()).toBeVisible();
   });
 
   test("should show orders page with past orders", async ({ page }) => {
-    // First create an order if needed
-    await clearCartViaUI(page);
-    await addProductToCart(page);
-    await page.goto("/checkout");
-
-    await page.getByLabel("Full Name").fill("Order History User");
-    await page.getByLabel("Street Address").fill("789 Order St");
-    await page.getByLabel("City").fill("OrderCity");
-    await page.getByLabel("ZIP Code").fill("11111");
-    await page
-      .getByRole("button", { name: "Continue to Payment" })
-      .click();
-    await page.getByRole("button", { name: /Pay Now/i }).click();
-    await expect(page).toHaveURL(/\/order-confirmation\/\d+/, {
-      timeout: 15000,
-    });
-
-    // Navigate to orders
-    await page.goto("/orders");
-
     await expect(
       page.getByRole("heading", { name: "Order History" })
     ).toBeVisible();
@@ -244,20 +236,13 @@ test.describe("Order History", () => {
   });
 
   test("should expand order to see item details", async ({ page }) => {
-    await page.goto("/orders");
-
-    // Click first order to expand
     const firstOrder = page.getByTestId("order-card").first();
     await firstOrder.getByTestId("order-toggle").click();
 
-    // Should show item details (product name, price, quantity)
     await expect(firstOrder.getByText(/\$\d+\.\d{2}/).first()).toBeVisible();
   });
 
   test("should show order status badges", async ({ page }) => {
-    await page.goto("/orders");
-
-    // At least one status badge should be visible
     const firstOrder = page.getByTestId("order-card").first();
     await expect(
       firstOrder.getByText(/pending|confirmed|shipped|delivered/i).first()
@@ -265,40 +250,20 @@ test.describe("Order History", () => {
   });
 
   test("should collapse order when clicked again", async ({ page }) => {
-    await page.goto("/orders");
-
     const firstOrder = page.getByTestId("order-card").first();
 
-    // Expand
     await firstOrder.getByTestId("order-toggle").click();
-    // Should show subtotal area
     await expect(firstOrder.getByText("Subtotal")).toBeVisible();
 
-    // Collapse
     await firstOrder.getByTestId("order-toggle").click();
-
-    // Subtotal should not be visible anymore
     await expect(firstOrder.getByText("Subtotal")).not.toBeVisible();
   });
 
   test("should navigate from confirmation to orders", async ({ page }) => {
-    await clearCartViaUI(page);
-    await addProductToCart(page);
-    await page.goto("/checkout");
+    // beforeEach already placed an order and navigated to /orders. For this
+    // test we want the confirmation->orders link, so place a fresh order.
+    await placeOrder(page, { name: "Nav Test", address: "123 Nav St", city: "NavCity", zip: "22222" });
 
-    await page.getByLabel("Full Name").fill("Nav Test");
-    await page.getByLabel("Street Address").fill("123 Nav St");
-    await page.getByLabel("City").fill("NavCity");
-    await page.getByLabel("ZIP Code").fill("22222");
-    await page
-      .getByRole("button", { name: "Continue to Payment" })
-      .click();
-    await page.getByRole("button", { name: /Pay Now/i }).click();
-    await expect(page).toHaveURL(/\/order-confirmation\/\d+/, {
-      timeout: 15000,
-    });
-
-    // Click "View All Orders"
     await page.getByRole("link", { name: "View All Orders" }).click();
     await expect(page).toHaveURL("/orders");
     await expect(page.getByTestId("order-card").first()).toBeVisible();

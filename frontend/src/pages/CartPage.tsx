@@ -246,6 +246,7 @@ export default function CartPage() {
                         -
                       </button>
                       <span
+                        data-testid="cart-item-qty"
                         className={`px-4 py-2 text-sm font-medium min-w-[3rem] text-center border-x border-slate-300 ${
                           updatingId === item.id ? "text-slate-400" : ""
                         }`}
@@ -348,13 +349,15 @@ export default function CartPage() {
               Order Summary
             </h2>
 
-            <div className="space-y-3 text-sm">
+            <div data-testid="cart-summary" className="space-y-3 text-sm">
               <div className="flex justify-between text-slate-600">
                 <span>
                   Subtotal ({cart.itemCount}{" "}
                   {cart.itemCount === 1 ? "item" : "items"})
                 </span>
-                <span className="font-medium">${subtotal.toFixed(2)}</span>
+                <span data-testid="summary-subtotal" className="font-medium">
+                  ${subtotal.toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Shipping</span>
@@ -362,14 +365,19 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Tax (8%)</span>
-                <span className="font-medium">${tax.toFixed(2)}</span>
+                <span data-testid="summary-tax" className="font-medium">
+                  ${tax.toFixed(2)}
+                </span>
               </div>
               <div className="border-t border-slate-100 pt-3 mt-3">
                 <div className="flex justify-between">
                   <span className="text-base font-bold text-slate-900">
                     Grand Total
                   </span>
-                  <span className="text-xl font-bold text-slate-900">
+                  <span
+                    data-testid="summary-grand-total"
+                    className="text-xl font-bold text-slate-900"
+                  >
                     ${grandTotal.toFixed(2)}
                   </span>
                 </div>
