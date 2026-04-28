@@ -32,11 +32,9 @@ export async function clearCartViaUI(page: Page) {
 
 export async function addProductToCart(page: Page) {
   await page.goto("/products");
-  // Click the first visible "Add to Cart" button (some products may be out of stock)
-  await page
-    .getByRole("button", { name: "Add to Cart" })
-    .first()
-    .click();
+  // The per-product testid only renders for in-stock + authenticated users,
+  // and survives the button's loading-state text swap.
+  await page.getByTestId(/^add-to-cart-\d+$/).first().click();
   await expect(page.getByText(/added to cart/i)).toBeVisible();
 }
 
@@ -44,4 +42,23 @@ export async function navigateToFirstProductDetail(page: Page) {
   await page.goto("/products");
   await page.getByTestId("product-card").first().getByRole("heading").click();
   await expect(page).toHaveURL(/\/products\/\d+/);
+}
+
+export async function placeOrder(
+  page: Page,
+  shipping: { name?: string; address?: string; city?: string; zip?: string } = {}
+) {
+  await clearCartViaUI(page);
+  await addProductToCart(page);
+  await page.goto("/checkout");
+
+  await page.getByLabel("Full Name").fill(shipping.name ?? "Helper Order User");
+  await page.getByLabel("Street Address").fill(shipping.address ?? "1 Helper Way");
+  await page.getByLabel("City").fill(shipping.city ?? "HelperCity");
+  await page.getByLabel("ZIP Code").fill(shipping.zip ?? "10001");
+
+  await page.getByRole("button", { name: "Continue to Payment" }).click();
+  await page.getByRole("button", { name: /Pay Now/i }).click();
+
+  await expect(page).toHaveURL(/\/order-confirmation\/\d+/, { timeout: 15000 });
 }

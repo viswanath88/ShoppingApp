@@ -39,22 +39,14 @@ test.describe("Cart", () => {
     await page.getByTestId("cart-link").click();
 
     const cartItem = page.getByTestId("cart-item").first();
-    const qtyDisplay = cartItem.locator("span.text-center");
+    const qtyDisplay = cartItem.getByTestId("cart-item-qty");
 
-    // Read the initial quantity
     await expect(qtyDisplay).toBeVisible();
     const initialQty = parseInt((await qtyDisplay.textContent()) || "0");
 
-    // Click + button to increase quantity
-    const plusBtn = cartItem.getByRole("button", { name: "+" });
-    await plusBtn.click();
+    await cartItem.getByRole("button", { name: "+" }).click();
 
-    // Verify the quantity incremented by 1
-    await expect(qtyDisplay).toHaveText(String(initialQty + 1), {
-      timeout: 5000,
-    });
-
-    // The total should update
+    await expect(qtyDisplay).toHaveText(String(initialQty + 1));
     await expect(page.getByText("Grand Total")).toBeVisible();
   });
 
@@ -146,25 +138,16 @@ test.describe("Cart", () => {
     await page.getByTestId("cart-link").click();
 
     const cartItem = page.getByTestId("cart-item").first();
-    const qtyDisplay = cartItem.locator("span.text-center");
+    const qtyDisplay = cartItem.getByTestId("cart-item-qty");
 
-    // Read the initial quantity
     await expect(qtyDisplay).toBeVisible();
     const initialQty = parseInt((await qtyDisplay.textContent()) || "0");
 
-    // Increase quantity first
-    const plusBtn = cartItem.getByRole("button", { name: "+" });
-    await plusBtn.click();
-    await expect(qtyDisplay).toHaveText(String(initialQty + 1), {
-      timeout: 5000,
-    });
+    await cartItem.getByRole("button", { name: "+" }).click();
+    await expect(qtyDisplay).toHaveText(String(initialQty + 1));
 
-    // Now click "-" to decrease quantity back
-    const minusBtn = cartItem.getByRole("button", { name: "-" });
-    await minusBtn.click();
-    await expect(qtyDisplay).toHaveText(String(initialQty), {
-      timeout: 5000,
-    });
+    await cartItem.getByRole("button", { name: "-" }).click();
+    await expect(qtyDisplay).toHaveText(String(initialQty));
   });
 
   test("should display correct tax calculation (8%)", async ({ page }) => {
@@ -172,36 +155,19 @@ test.describe("Cart", () => {
     await addProductToCart(page);
 
     await page.getByTestId("cart-link").click();
-    await expect(page.getByText("Order Summary")).toBeVisible();
 
-    // The cart summary has rows like: <div class="flex justify-between"><span>Subtotal (...)</span><span>$XX.XX</span></div>
-    // Use the row container to extract the dollar amount next to each label
-    const summarySection = page.locator(".space-y-3.text-sm");
+    const summary = page.getByTestId("cart-summary");
+    await expect(summary).toBeVisible();
 
-    const subtotalRow = summarySection.locator("div.flex").filter({ hasText: "Subtotal" });
-    const taxRow = summarySection.locator("div.flex").filter({ hasText: "Tax (8%)" });
-    const grandTotalRow = summarySection.locator("div.flex").filter({ hasText: "Grand Total" });
+    const parseDollar = async (testId: string) =>
+      parseFloat(((await summary.getByTestId(testId).textContent()) || "").replace("$", ""));
 
-    // Wait for values to be rendereds//
-    await expect(subtotalRow).toBeVisible();
+    const subtotal = await parseDollar("summary-subtotal");
+    const tax = await parseDollar("summary-tax");
+    const grandTotal = await parseDollar("summary-grand-total");
 
-    // Extract dollar amounts from each row
-    const subtotalText = await subtotalRow.locator("span").last().textContent();
-    const taxText = await taxRow.locator("span").last().textContent();
-    const grandTotalText = await grandTotalRow.locator("span").last().textContent();
-
-    // Parse dollar amounts
-    const subtotal = parseFloat(subtotalText!.replace("$", ""));
-    const tax = parseFloat(taxText!.replace("$", ""));
-    const grandTotal = parseFloat(grandTotalText!.replace("$", ""));
-
-    // Verify tax is 8% of subtotal
-    const expectedTax = Math.round(subtotal * 0.08 * 100) / 100;
-    expect(tax).toBeCloseTo(expectedTax, 2);
-
-    // Verify grand total = subtotal + tax
-    const expectedGrandTotal = Math.round((subtotal + tax) * 100) / 100;
-    expect(grandTotal).toBeCloseTo(expectedGrandTotal, 2);
+    expect(tax).toBeCloseTo(Math.round(subtotal * 0.08 * 100) / 100, 2);
+    expect(grandTotal).toBeCloseTo(Math.round((subtotal + tax) * 100) / 100, 2);
   });
 
   test("should navigate to product detail from cart item", async ({ page }) => {
