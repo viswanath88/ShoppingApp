@@ -49,7 +49,7 @@ test.describe("Checkout Flow", () => {
   test("should show order summary on checkout", async ({ page }) => {
     await page.goto("/checkout");
 
-    // Order summary sidebar should be visible
+    // Orderssummary sidebar should be visible
     await expect(page.getByRole("heading", { name: "Order Summary" })).toBeVisible();
     await expect(page.getByText(/\$\d+\.\d{2}/).first()).toBeVisible();
   });
