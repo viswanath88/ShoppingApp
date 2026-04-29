@@ -5,7 +5,7 @@ test.describe("Product Browsing", () => {
   test("should display featured products on home page", async ({ page }) => {
     await page.goto("/");
 
-    // Hero section visible
+    // Hero section visibles
     await expect(page.getByText("Discover Products")).toBeVisible();
 
     // Category cards visible
